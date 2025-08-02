@@ -10,24 +10,44 @@ import { getTodayString } from './utils/date';
 
 function App() {
   const [currentDate, setCurrentDate] = useState(getTodayString());
-  const [dailyData, setDailyData] = useState<DailyData>(() => getDailyData(getTodayString()));
+  const [dailyData, setDailyData] = useState<DailyData>({
+    date: currentDate,
+    foods: [],
+    activities: [],
+    summary: '',
+  });
+  const [loading, setLoading] = useState(true);
 
   // Load data when date changes
   useEffect(() => {
-    const data = getDailyData(currentDate);
-    setDailyData(data);
+    setLoading(true);
+    getDailyData(currentDate).then(data => {
+      setDailyData(data);
+      setLoading(false);
+    }).catch(err => {
+      console.error('Failed to load daily data:', err);
+      setDailyData({
+        date: currentDate,
+        foods: [],
+        activities: [],
+        summary: '',
+      });
+      setLoading(false);
+    });
   }, [currentDate]);
 
-  // Save data whenever dailyData changes
+  // Save data whenever dailyData changes (but not on initial load)
   useEffect(() => {
-    if (dailyData.date) {
-      saveDailyData(currentDate, dailyData);
+    if (!loading && dailyData.date) {
+      saveDailyData(currentDate, dailyData).catch(err => {
+        console.error('Failed to save daily data:', err);
+      });
     }
-  }, [dailyData, currentDate]);
+  }, [dailyData, currentDate, loading]);
 
-  // Calculate calorie summary
-  const totalFoodCalories = dailyData.foods.reduce((sum, food) => sum + food.calories, 0);
-  const totalBurnedCalories = dailyData.activities.reduce((sum, activity) => sum + activity.caloriesBurned, 0);
+  // Defensive calorie calculations
+  const totalFoodCalories = dailyData?.foods?.reduce((sum, food) => sum + food.calories, 0) || 0;
+  const totalBurnedCalories = dailyData?.activities?.reduce((sum, activity) => sum + activity.caloriesBurned, 0) || 0;
   const netCalories = totalFoodCalories - totalBurnedCalories;
 
   const handleDateChange = (newDate: string) => {
@@ -51,7 +71,7 @@ function App() {
   const handleEditFood = (id: string, description: string, calories: number) => {
     setDailyData(prev => ({
       ...prev,
-      foods: prev.foods.map(food => 
+      foods: prev.foods.map(food =>
         food.id === id ? { ...food, description, calories } : food
       )
     }));
@@ -81,7 +101,7 @@ function App() {
   const handleEditActivity = (id: string, description: string, caloriesBurned: number) => {
     setDailyData(prev => ({
       ...prev,
-      activities: prev.activities.map(activity => 
+      activities: prev.activities.map(activity =>
         activity.id === id ? { ...activity, description, caloriesBurned } : activity
       )
     }));
@@ -101,6 +121,14 @@ function App() {
     }));
   };
 
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center text-gray-500">
+        טוען נתונים... / Loading data...
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
       <div className="container mx-auto px-4 py-6 max-w-2xl">
@@ -113,7 +141,6 @@ function App() {
           </p>
         </header>
 
-        {/* Calorie Summary */}
         {(totalFoodCalories > 0 || totalBurnedCalories > 0) && (
           <div className="bg-white rounded-lg shadow-md p-4 mb-6">
             <h3 className="text-lg font-semibold text-gray-800 mb-3 flex items-center">
@@ -137,7 +164,7 @@ function App() {
             </div>
           </div>
         )}
-        <DateNavigation 
+        <DateNavigation
           currentDate={currentDate}
           onDateChange={handleDateChange}
         />
@@ -164,7 +191,7 @@ function App() {
         <ExportSection />
 
         <footer className="text-center text-gray-500 text-sm mt-8">
-          כל הנתונים נשמרים מקומית במכשיר שלך / All data is stored locally on your device
+          כל הנתונים נשמרים במאגר בענן ונגישים ממכשירים שונים / All data is stored in the cloud and accessible from multiple devices
         </footer>
       </div>
     </div>
