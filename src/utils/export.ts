@@ -1,8 +1,8 @@
 import { StorageData } from '../types';
 import { loadData } from './storage';
 
-export const exportAsJSON = (): void => {
-  const data = loadData();
+export const exportAsJSON = async (): Promise<void> => {
+  const data = await loadData();  // מחכים לנתונים
   const dataStr = JSON.stringify(data, null, 2);
   const dataBlob = new Blob([dataStr], { type: 'application/json' });
   
@@ -12,8 +12,8 @@ export const exportAsJSON = (): void => {
   link.click();
 };
 
-export const exportAsCSV = (): void => {
-  const data = loadData();
+export const exportAsCSV = async (): Promise<void> => {
+  const data = await loadData();  // מחכים לנתונים
   let csvContent = 'Date,Type,Description,Calories,Summary\n';
   
   Object.values(data).forEach(dayData => {
